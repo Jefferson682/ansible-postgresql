@@ -1,4 +1,4 @@
-# PostgreSQL Automated Deployment
+# Implantação Automatizada do PostgreSQL
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Ansible](https://img.shields.io/badge/Ansible-2.9%2B-blue.svg)](https://www.ansible.com/)
@@ -6,18 +6,18 @@
 
 ## 📋 Sobre o Projeto
 
-Este playbook Ansible automatiza a instalação e configuração do PostgreSQL 16 em múltiplos ambientes (DEV, STG e PROD). Criado para instalações padronizadas, seguras e reproduzíveis.
+Este playbook Ansible automatiza a instalação e configuração do PostgreSQL 16 em múltiplos ambientes (DEV, STG e PROD). Ele foi projetado para garantir instalações padronizadas, seguras e reproduzíveis.
 
 ### ✨ Características Principais
 
 - 🚀 **Instalação automatizada** do PostgreSQL 16
 - 🔐 **Configuração segura** com usuários administrativos e de aplicação
-- 🔥 **Firewall configurado** automaticamente
-- 🎯 **Múltiplos ambientes** (DEV, STG, PROD)
+- 🔥 **Configuração automática de firewall**
+- 🎯 **Suporte a múltiplos ambientes** (DEV, STG, PROD)
 - ✅ **Modo check** para validação prévia (dry-run)
 - 🧪 **Ambiente de desenvolvimento** com Vagrant
 
-> **📦 Status**: Atualmente estruturado como playbook Ansible, será migrado para **Ansible Collection** no futuro.
+> **📦 Status**: Atualmente estruturado como playbook Ansible, com planos para migração futura para **Ansible Collection**.
 
 ## 📄 Licença
 
@@ -37,6 +37,7 @@ Este projeto está licenciado sob a **MIT License** - veja o arquivo [LICENSE](L
 - [Estrutura do Projeto](#-estrutura-do-projeto)
 - [Contribuindo](#-contribuindo)
 - [Roadmap](#-roadmap)
+- [Convenção de Mensagens de Commit](#-convenção-de-mensagens-de-commit)
 
 ## 🔧 Requisitos
 
@@ -68,7 +69,7 @@ ansible-playbook -i inventories/dev/inventory.ini playbooks/install_postgres.yml
 ### Servidor Remoto
 
 ```bash
-# 1. Configure SSH
+# 1. Configure o SSH
 ssh-copy-id ansible_user@<IP_DO_SERVIDOR>
 
 # 2. Teste (dry-run)
@@ -102,16 +103,6 @@ ansible-playbook -i inventories/stg/inventory.ini playbooks/install_postgres.yml
 - ❌ Replicação master/slave
 - ❌ Backup automático
 - ❌ SSL/TLS automático
-
-## 🌐 Estrutura de Inventários
-
-| Ambiente | Descrição | Exemplo Host | Exemplo IP |
-|----------|-----------|--------------|------------|
-| **DEV** | Desenvolvimento (Vagrant) | postgres-lab | 127.0.0.1 |
-| **STG** | Staging/Homologação | postgres-stg-hostname | 192.168.1.10 |
-| **PRD** | Produção | postgres-prd-hostname | 10.0.1.100 |
-
-> Configure os inventários em `inventories/[ambiente]/inventory.ini` com seus dados reais.
 
 ## ⚙️ Configuração de Variáveis
 
@@ -166,8 +157,6 @@ ansible-vault view group_vars/vault.yml --vault-password-file .vault_pass
 ansible-vault edit group_vars/vault.yml --vault-password-file .vault_pass
 ```
 
-**📖 Documentação completa**: Veja [VAULT_SETUP.md](VAULT_SETUP.md) para mais detalhes.
-
 ## 🚀 Instalação
 
 ### Desenvolvimento
@@ -178,7 +167,7 @@ ansible-playbook -i inventories/dev/inventory.ini playbooks/install_postgres.yml
 
 ### Staging/Produção
 ```bash
-# 1. Configure SSH
+# 1. Configure o SSH
 ssh-copy-id ansible_user@<IP>
 
 # 2. Teste (recomendado)
@@ -254,8 +243,6 @@ O playbook cria automaticamente 4 tipos de usuários com diferentes níveis de a
 
 ## 🔗 Conectividade
 
-## 🔗 Conectividade
-
 ### Exemplos de Conexão
 
 ```bash
@@ -316,10 +303,16 @@ ansible-postgresql/
 │   ├── install_postgres.yml
 │   └── uninstall_postgres.yml
 ├── group_vars/
-│   └── default.yml
+│   ├── default.yml
+│   ├── vault.yml                  # Arquivo criptografado com Ansible Vault
+│   └── vault.yml.example          # Exemplo de configuração para o Vault
 ├── inventories/
 │   ├── dev/
 │   ├── stg/
+│   │   └── group_vars/
+│   │       ├── postgres.yml
+│   │       ├── vault.yml          # Arquivo criptografado com Ansible Vault
+│   │       └── vault.yml.example  # Exemplo de configuração para o Vault
 │   └── prd/
 └── roles/
     └── postgres/
@@ -338,8 +331,58 @@ Contribuições são bem-vindas!
 4. Push (`git push origin feature/MinhaFeature`)
 5. Abra um Pull Request
 
-### Reportar Issues
-[GitHub Issues](https://github.com/Jefferson682/ansible-postgresql/issues)
+
+## 📝 Convenção de Mensagens de Commit
+
+Este projeto segue uma convenção de mensagens de commit para garantir clareza e consistência no histórico do Git.
+
+### 🎯 **Formato da Mensagem de Commit**
+
+```
+<tipo>(escopo opcional): mensagem
+```
+
+### **Tipos Válidos**
+- `feat`: Adição de nova funcionalidade
+- `fix`: Correção de bugs
+- `docs`: Alterações na documentação
+- `style`: Alterações de estilo (formatação, etc.)
+- `refactor`: Refatoração de código (sem novas funcionalidades ou correções de bugs)
+- `test`: Adição ou correção de testes
+- `chore`: Tarefas gerais (ex.: atualização de dependências)
+
+### **Exemplos**
+
+- `feat: adiciona suporte a múltiplos ambientes`
+- `fix: corrige erro na configuração do firewall`
+- `docs(readme): atualiza instruções de instalação`
+- `style: ajusta indentação no playbook`
+- `refactor(tasks): simplifica lógica de criação de usuários`
+- `test: adiciona testes para validação de senhas`
+- `chore: atualiza dependências do Ansible`
+
+### 🚨 **Validação Automática**
+
+Um hook Git (`commit-msg`) foi configurado para validar mensagens de commit. Se a mensagem não seguir o formato correto, o commit será rejeitado.
+
+#### **Erro Exemplo**
+
+Se você receber o seguinte erro:
+
+```
+ERRO: Formato de mensagem de commit inválido!
+Formato esperado: <tipo>(escopo opcional): mensagem
+```
+
+Certifique-se de que sua mensagem segue o formato descrito acima.
+
+#### **Desativar Temporariamente o Hook**
+
+Se necessário, você pode ignorar o hook usando a flag `--no-verify`:
+
+```bash
+git commit --no-verify -m "mensagem fora do padrão"
+```
 
 ## 📝 Roadmap
 
@@ -385,7 +428,7 @@ Contribuições são bem-vindas!
 - 💾 **Backup**: Configure backups regulares
 - 🚫 **postgres user**: Nunca use em operações rotineiras
 
-## 📞 Suporte
+## 📞 Suporte | Reportar Issues
 
 - **Issues**: [GitHub Issues](https://github.com/Jefferson682/ansible-postgresql/issues)
 - **Discussões**: [GitHub Discussions](https://github.com/Jefferson682/ansible-postgresql/discussions)
