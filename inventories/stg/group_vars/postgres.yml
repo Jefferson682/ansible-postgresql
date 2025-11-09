@@ -5,4 +5,6 @@ postgres_data_dir: /opt/psql
 # Application user and database (specific to this environment)
 postgres_app_user: "app_user_stg"
 postgres_app_password: "your-staging-password"
+postgres_app_user_readonly: "app_user_stg_ro"
+postgres_app_password_readonly: "your-staging-password"
 postgres_app_db: "myapp_staging"

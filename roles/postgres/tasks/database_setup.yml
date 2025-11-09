@@ -22,6 +22,15 @@
   changed_when: true
   no_log: true
 
+# Create application-specific user readonly (if defined)
+- name: Create PostgreSQL application readonly user
+  shell: |
+    sudo -u postgres psql -c "CREATE USER \"{{ postgres_app_user_readonly }}\" WITH PASSWORD '{{ postgres_app_password_readonly }}' LOGIN;" || \
+    sudo -u postgres psql -c "ALTER USER \"{{ postgres_app_user_readonly }}\" PASSWORD '{{ postgres_app_password_readonly }}';"
+  changed_when: true
+  no_log: true
+  when: postgres_app_user_readonly is defined and postgres_app_user_readonly != ""
+
 # Create application database
 - name: Create PostgreSQL application database
   shell: |
@@ -34,3 +43,52 @@
   shell: |
     sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE \"{{ postgres_app_db }}\" TO \"{{ postgres_app_user }}\";"
   changed_when: true
+
+# Grant read-only privileges to readonly user
+- name: Grant CONNECT privilege to readonly user on database
+  shell: |
+    sudo -u postgres psql -c "GRANT CONNECT ON DATABASE \"{{ postgres_app_db }}\" TO \"{{ postgres_app_user_readonly }}\";"
+  changed_when: true
+  when: postgres_app_user_readonly is defined and postgres_app_user_readonly != ""
+
+- name: Grant USAGE privilege to readonly user on schema
+  shell: |
+    sudo -u postgres psql -d "{{ postgres_app_db }}" -c "GRANT USAGE ON SCHEMA public TO \"{{ postgres_app_user_readonly }}\";"
+  changed_when: true
+  when: postgres_app_user_readonly is defined and postgres_app_user_readonly != ""
+
+- name: Grant SELECT on all existing tables to readonly user
+  shell: |
+    sudo -u postgres psql -d "{{ postgres_app_db }}" -c "GRANT SELECT ON ALL TABLES IN SCHEMA public TO \"{{ postgres_app_user_readonly }}\";"
+  changed_when: true
+  when: postgres_app_user_readonly is defined and postgres_app_user_readonly != ""
+
+- name: Grant SELECT on all future tables to readonly user (for app user)
+  shell: |
+    sudo -u postgres psql -d "{{ postgres_app_db }}" -c "ALTER DEFAULT PRIVILEGES FOR ROLE \"{{ postgres_app_user }}\" IN SCHEMA public GRANT SELECT ON TABLES TO \"{{ postgres_app_user_readonly }}\";"
+  changed_when: true
+  when: postgres_app_user_readonly is defined and postgres_app_user_readonly != ""
+
+- name: Grant SELECT on all future tables to readonly user (for DBA admin)
+  shell: |
+    sudo -u postgres psql -d "{{ postgres_app_db }}" -c "ALTER DEFAULT PRIVILEGES FOR ROLE \"{{ postgres_admin_user }}\" IN SCHEMA public GRANT SELECT ON TABLES TO \"{{ postgres_app_user_readonly }}\";"
+  changed_when: true
+  when: postgres_app_user_readonly is defined and postgres_app_user_readonly != ""
+
+- name: Grant SELECT on all existing sequences to readonly user
+  shell: |
+    sudo -u postgres psql -d "{{ postgres_app_db }}" -c "GRANT SELECT ON ALL SEQUENCES IN SCHEMA public TO \"{{ postgres_app_user_readonly }}\";"
+  changed_when: true
+  when: postgres_app_user_readonly is defined and postgres_app_user_readonly != ""
+
+- name: Grant SELECT on all future sequences to readonly user (for app user)
+  shell: |
+    sudo -u postgres psql -d "{{ postgres_app_db }}" -c "ALTER DEFAULT PRIVILEGES FOR ROLE \"{{ postgres_app_user }}\" IN SCHEMA public GRANT SELECT ON SEQUENCES TO \"{{ postgres_app_user_readonly }}\";"
+  changed_when: true
+  when: postgres_app_user_readonly is defined and postgres_app_user_readonly != ""
+
+- name: Grant SELECT on all future sequences to readonly user (for DBA admin)
+  shell: |
+    sudo -u postgres psql -d "{{ postgres_app_db }}" -c "ALTER DEFAULT PRIVILEGES FOR ROLE \"{{ postgres_admin_user }}\" IN SCHEMA public GRANT SELECT ON SEQUENCES TO \"{{ postgres_app_user_readonly }}\";"
+  changed_when: true
+  when: postgres_app_user_readonly is defined and postgres_app_user_readonly != ""
