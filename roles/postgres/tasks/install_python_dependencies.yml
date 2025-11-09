@@ -1,0 +1,31 @@
+---
+# Ensure required Python dependencies are installed
+
+# Here commands for REDHAT-based systems
+- name: Ensure Python dependencies are installed on RedHat-based systems
+  ansible.builtin.yum:
+    name:
+      - python3-pip
+    state: present
+  when: ansible_facts['os_family'] == 'RedHat'
+
+- name: Install required Python modules on RedHat-based systems
+  ansible.builtin.pip:
+    name: six
+    executable: pip3
+  when: ansible_facts['os_family'] == 'RedHat'
+
+# Here commands for DEBIAN-based systems
+- name: Ensure Python dependencies are installed on Debian-based systems
+  ansible.builtin.apt:
+    name:
+      - python3-pip
+    state: present
+    update_cache: yes
+  when: ansible_facts['os_family'] == 'Debian'
+
+- name: Install required Python modules on Debian-based systems
+  ansible.builtin.pip:
+    name: six
+    executable: pip3
+  when: ansible_facts['os_family'] == 'Debian'
