@@ -1,0 +1,26 @@
+---
+# Tasks for installing PostgreSQL on RedHat-based systems
+- name: Add PostgreSQL repository for RedHat-based systems
+  yum_repository:
+    name: "pgdg"
+    description: "PostgreSQL Repository"
+    baseurl: "https://download.postgresql.org/pub/repos/yum/reporpms/EL-{{ ansible_distribution_major_version }}-x86_64/pgdg-redhat-repo-latest.noarch.rpm"
+    enabled: yes
+    gpgcheck: yes
+    gpgkey: "https://download.postgresql.org/pub/repos/yum/RPM-GPG-KEY-PGDG"
+  when: ansible_facts['os_family'] == 'RedHat'
+
+- name: Install PostgreSQL package on RedHat-based systems
+  yum:
+    name:
+      - postgresql
+      - postgresql-contrib
+    state: present
+  when: ansible_facts['os_family'] == 'RedHat'
+
+- name: Ensure PostgreSQL service is enabled and started on RedHat-based systems
+  service:
+    name: postgresql
+    state: started
+    enabled: yes
+  when: ansible_facts['os_family'] == 'RedHat'
