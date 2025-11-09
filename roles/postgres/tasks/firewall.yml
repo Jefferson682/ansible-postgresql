@@ -1,0 +1,42 @@
+---
+- name: Check if firewalld is installed and running
+  ansible.builtin.systemd:
+    name: firewalld
+  register: firewalld_status
+  ignore_errors: yes
+  check_mode: false
+  tags: firewall
+
+- name: Configure firewall for PostgreSQL
+  block:
+    - name: Allow PostgreSQL port through firewall
+      ansible.posix.firewalld:
+        port: "{{ postgres_port }}/tcp"
+        permanent: yes
+        state: enabled
+        immediate: yes
+      notify: reload firewalld
+
+    - name: Verify PostgreSQL port is accessible
+      ansible.builtin.wait_for:
+        port: "{{ postgres_port }}"
+        host: "0.0.0.0"
+        timeout: 10
+        msg: "PostgreSQL port {{ postgres_port }} is not accessible"
+      when: not ansible_check_mode
+
+    - name: Display firewall status
+      ansible.builtin.debug:
+        msg: "PostgreSQL port {{ postgres_port }} has been opened in firewall"
+      
+  when: 
+    - firewalld_status.status is defined
+    - firewalld_status.status.ActiveState == "active"
+  tags: firewall
+
+- name: Display firewall status when not active
+  ansible.builtin.debug:
+    msg: "Firewalld is not active - PostgreSQL port {{ postgres_port }} should be accessible"
+  when: 
+    - firewalld_status.status is not defined or firewalld_status.status.ActiveState != "active"
+  tags: firewall

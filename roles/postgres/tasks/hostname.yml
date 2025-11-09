@@ -1,0 +1,30 @@
+---
+- name: Get current hostname
+  command: hostname
+  register: current_hostname
+  changed_when: false
+  check_mode: false
+
+- name: Set system hostname
+  hostname:
+    name: "{{ inventory_hostname }}"
+  when: current_hostname.stdout != inventory_hostname
+
+- name: Update /etc/hosts with new hostname
+  lineinfile:
+    path: /etc/hosts
+    regexp: '^127\.0\.0\.1.*'
+    line: "127.0.0.1 {{ inventory_hostname }} localhost localhost.localdomain"
+    backup: yes
+    create: yes
+
+- name: Display hostname status
+  debug:
+    msg: |
+      {% if ansible_check_mode %}
+      [CHECK MODE] Would set hostname to: {{ inventory_hostname }}
+      Current hostname: {{ current_hostname.stdout }}
+      {% else %}
+      Current hostname: {{ current_hostname.stdout }}
+      Expected hostname: {{ inventory_hostname }}
+      {% endif %}

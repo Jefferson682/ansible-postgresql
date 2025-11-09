@@ -1,0 +1,30 @@
+---
+- name: Check if PostgreSQL GPG key is already imported
+  ansible.builtin.command:
+    cmd: rpm -qa | grep pgdg-redhat-repo
+  register: pgdg_key_check
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Ensure PostgreSQL GPG key is imported manually
+  ansible.builtin.command:
+    cmd: rpm --import https://apt.postgresql.org/pub/repos/yum/keys/RPM-GPG-KEY-PGDG
+  changed_when: false
+  ignore_errors: yes
+  when: 
+    - not ansible_check_mode
+    - pgdg_key_check.rc != 0
+
+- name: Add PostgreSQL repository package (disable GPG check just for install)
+  ansible.builtin.yum:
+    name: "https://download.postgresql.org/pub/repos/yum/reporpms/EL-9-x86_64/pgdg-redhat-repo-latest.noarch.rpm"
+    state: present
+    disable_gpg_check: true
+
+- name: Ensure PostgreSQL repo GPG check is enabled (after import)
+  ansible.builtin.replace:
+    path: /etc/yum.repos.d/pgdg-redhat-all.repo
+    regexp: '^gpgcheck\s*=\s*0'
+    replace: 'gpgcheck=1'
+  when: ansible_facts['os_family'] == 'RedHat'

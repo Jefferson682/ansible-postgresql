@@ -1,0 +1,87 @@
+---
+- name: Uninstall PostgreSQL (Simple & Fast)
+  hosts: postgres
+  become: true
+  vars_files:
+    - ../group_vars/default.yml
+  tasks:
+    # Quick detection - find running PostgreSQL version
+    - name: Find running PostgreSQL service
+      shell: "systemctl list-units --type=service --state=active | grep postgresql | head -1 | grep -o 'postgresql-[0-9]*' | grep -o '[0-9]*'"
+      register: running_postgres_version
+      failed_when: false
+      changed_when: false
+      check_mode: false
+
+    - name: Set PostgreSQL version to remove
+      set_fact:
+        postgres_version_to_remove: "{{ running_postgres_version.stdout | default(postgres_version | default('16')) }}"
+
+    - name: Display what will be removed
+      debug:
+        msg: |
+          {% if ansible_check_mode %}[CHECK MODE] {% endif %}Removing PostgreSQL {{ postgres_version_to_remove }}
+          Data directory: {{ postgres_data_dir | default('/opt/psql') }}
+          {% if ansible_check_mode %}This is a DRY RUN - nothing will be actually removed!{% endif %}
+
+    # Simple removal process
+    - name: Stop PostgreSQL service
+      service:
+        name: "postgresql-{{ postgres_version_to_remove }}"
+        state: stopped
+        enabled: false
+      ignore_errors: yes
+
+    - name: Remove systemd override
+      file:
+        path: "/etc/systemd/system/postgresql-{{ postgres_version_to_remove }}.service.d"
+        state: absent
+
+    - name: Remove PostgreSQL packages
+      yum:
+        name: "postgresql{{ postgres_version_to_remove }}*"
+        state: absent
+
+    - name: Remove PostgreSQL repository
+      yum:
+        name: "pgdg-redhat-repo*"
+        state: absent
+
+    - name: Remove data directories
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - "{{ postgres_data_dir | default('/opt/psql') }}"
+        - "/var/lib/pgsql"
+
+    - name: Remove firewall rule
+      ansible.posix.firewalld:
+        port: "{{ postgres_port | default(5432) }}/tcp"
+        permanent: yes
+        state: disabled
+        immediate: yes
+      ignore_errors: yes
+      when: not ansible_check_mode
+
+    - name: Remove postgres user
+      user:
+        name: postgres
+        state: absent
+        remove: yes
+      ignore_errors: yes
+      when: not ansible_check_mode
+
+    - name: Reload systemd
+      systemd:
+        daemon_reload: yes
+
+    - name: Display completion message
+      debug:
+        msg: |
+          {% if ansible_check_mode %}
+          [CHECK MODE] PostgreSQL {{ postgres_version_to_remove }} would be completely removed!
+          Run without --check to actually remove it.
+          {% else %}
+          PostgreSQL {{ postgres_version_to_remove }} has been completely removed!
+          {% endif %}

@@ -1,0 +1,10 @@
+---
+- name: Ensure Python 3 pip is installed
+  ansible.builtin.yum:
+    name: python3-pip
+    state: present
+
+- name: Install psycopg2-binary via pip
+  ansible.builtin.pip:
+    name: psycopg2-binary
+    executable: pip3

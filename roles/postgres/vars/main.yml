@@ -1,0 +1,8 @@
+---
+postgres_repo_rpm: "https://download.postgresql.org/pub/repos/yum/reporpms/EL-9-x86_64/pgdg-redhat-repo-latest.noarch.rpm"
+postgres_packages:
+  - postgresql16
+  - postgresql16-server
+  - postgresql16-contrib
+
+postgres_superuser: "postgres"   # Default PostgreSQL superuser

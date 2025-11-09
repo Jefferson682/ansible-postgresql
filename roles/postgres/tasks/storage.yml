@@ -1,0 +1,34 @@
+---
+- name: Ensure postgres user exists
+  user:
+    name: postgres
+    system: yes
+    shell: /bin/bash
+    home: /var/lib/pgsql
+    create_home: yes
+    state: present
+    comment: "PostgreSQL Server"
+
+- name: Ensure postgres user has sudo access for PostgreSQL operations
+  lineinfile:
+    path: /etc/sudoers.d/postgres
+    line: "postgres ALL=(ALL) NOPASSWD: /usr/pgsql-*/bin/*, /bin/systemctl * postgresql*"
+    create: yes
+    mode: '0440'
+    validate: 'visudo -cf %s'
+
+- name: Create data directory
+  file:
+    path: "{{ postgres_data_dir }}"
+    owner: postgres
+    group: postgres
+    mode: '0700'
+    state: directory
+
+- name: Ensure postgres user owns its home directory
+  file:
+    path: /var/lib/pgsql
+    owner: postgres
+    group: postgres
+    state: directory
+    mode: '0755'

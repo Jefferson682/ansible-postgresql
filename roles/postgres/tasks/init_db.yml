@@ -1,0 +1,81 @@
+---
+- name: Check if PostgreSQL database is already initialized
+  stat:
+    path: "{{ postgres_data_dir }}/PG_VERSION"
+  register: pg_initialized
+
+- name: Initialize PostgreSQL database with custom data directory
+  block:
+    - name: Set ownership of data directory to postgres user (double-check)
+      file:
+        path: "{{ postgres_data_dir }}"
+        owner: postgres
+        group: postgres
+        mode: '0700'
+        state: directory
+
+    - name: Initialize database as postgres user
+      command: "/usr/pgsql-{{ postgres_version }}/bin/initdb -D {{ postgres_data_dir }}"
+      args:
+        creates: "{{ postgres_data_dir }}/PG_VERSION"
+      become: yes
+      become_user: postgres
+      environment:
+        PGDATA: "{{ postgres_data_dir }}"
+        LC_ALL: "C"
+      
+  rescue:
+    - name: Debug information on failure
+      debug:
+        msg: |
+          Initialization failed with become_user. Trying alternative method.
+          Data directory: {{ postgres_data_dir }}
+          PostgreSQL version: {{ postgres_version }}
+    
+    - name: Alternative initialization using direct sudo
+      shell: "sudo -u postgres /usr/pgsql-{{ postgres_version }}/bin/initdb -D {{ postgres_data_dir }}"
+      args:
+        creates: "{{ postgres_data_dir }}/PG_VERSION"
+      environment:
+        PGDATA: "{{ postgres_data_dir }}"
+        LC_ALL: "C"
+      
+  when: not pg_initialized.stat.exists
+
+- name: Update PostgreSQL configuration
+  lineinfile:
+    path: "{{ postgres_data_dir }}/postgresql.conf"
+    regexp: '^#?listen_addresses'
+    line: "listen_addresses = '{{ postgres_listen_addresses }}'"
+    create: yes
+  when: not ansible_check_mode or pg_initialized.stat.exists
+
+- name: Configure pg_hba.conf
+  blockinfile:
+    path: "{{ postgres_data_dir }}/pg_hba.conf"
+    create: yes
+    block: |
+      {% for rule in postgres_hba_conf %}
+      {% if rule.address is defined %}
+      {{ rule.type }} {{ rule.database }} {{ rule.user }} {{ rule.address }} {{ rule.method }}
+      {% else %}
+      {{ rule.type }} {{ rule.database }} {{ rule.user }} {{ rule.method }}
+      {% endif %}
+      {% endfor %}
+  when: not ansible_check_mode or pg_initialized.stat.exists
+
+- name: Display database initialization status
+  debug:
+    msg: |
+      {% if ansible_check_mode %}
+      [CHECK MODE] Database initialization status:
+      - Data directory: {{ postgres_data_dir }}
+      - Initialized: {{ pg_initialized.stat.exists }}
+      {% if not pg_initialized.stat.exists %}
+      - Would initialize database
+      - Would configure postgresql.conf
+      - Would configure pg_hba.conf
+      {% else %}
+      - Would update configuration files
+      {% endif %}
+      {% endif %}

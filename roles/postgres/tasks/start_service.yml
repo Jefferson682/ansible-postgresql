@@ -1,0 +1,23 @@
+---
+- name: Start PostgreSQL service
+  service:
+    name: "{{ postgres_service }}"
+    state: started
+    enabled: yes
+  when: not ansible_check_mode
+
+- name: Check PostgreSQL service status
+  shell: systemctl is-active {{ postgres_service }} || echo "inactive"
+  register: postgres_status
+  changed_when: false
+  failed_when: false
+  when: not ansible_check_mode
+
+- name: Display PostgreSQL status
+  debug:
+    msg: |
+      {% if ansible_check_mode %}
+      [CHECK MODE] Would start PostgreSQL service: {{ postgres_service }}
+      {% else %}
+      PostgreSQL service status: {{ postgres_status.stdout | default('unknown') }}
+      {% endif %}

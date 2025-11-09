@@ -1,0 +1,23 @@
+---
+- name: Create PostgreSQL systemd service override directory
+  file:
+    path: "/etc/systemd/system/postgresql-{{ postgres_version }}.service.d"
+    state: directory
+    mode: '0755'
+
+- name: Configure PostgreSQL service to use custom data directory
+  copy:
+    content: |
+      [Service]
+      Environment=PGDATA={{ postgres_data_dir }}
+    dest: "/etc/systemd/system/postgresql-{{ postgres_version }}.service.d/custom-datadir.conf"
+  notify: reload systemd
+
+- name: Reload systemd daemon
+  systemd:
+    daemon_reload: yes
+
+- name: Enable PostgreSQL service (don't start yet)
+  service:
+    name: "{{ postgres_service }}"
+    enabled: true

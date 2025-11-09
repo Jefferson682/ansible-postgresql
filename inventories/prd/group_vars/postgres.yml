@@ -1,0 +1,8 @@
+---
+# Environment-specific configuration for PRODUCTION
+postgres_data_dir: /opt/psql
+
+# Application user and database (specific to this environment)
+postgres_app_user: "app_user_prd"
+postgres_app_password: "your-production-password"
+postgres_app_db: "myapp_production"

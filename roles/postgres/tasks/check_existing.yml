@@ -1,0 +1,19 @@
+---
+- name: Check if PostgreSQL is already installed
+  shell: |
+    if systemctl list-unit-files | grep -E 'postgresql-[0-9]+\.service' | head -1; then
+      echo "found"
+    else
+      echo "not_found"
+    fi
+  register: postgres_check
+  changed_when: false
+  failed_when: false
+
+- name: Display PostgreSQL installation status
+  debug:
+    msg: "PostgreSQL status: {{ 'Already installed' if postgres_check.stdout == 'found' else 'Not installed' }}"
+
+- name: Set fact for existing PostgreSQL
+  set_fact:
+    postgres_already_installed: "{{ postgres_check.stdout == 'found' }}"

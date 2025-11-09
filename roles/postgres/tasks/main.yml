@@ -1,0 +1,36 @@
+---
+- name: Check existing PostgreSQL installation
+  include_tasks: check_existing.yml
+
+- name: Configure system hostname
+  include_tasks: hostname.yml
+
+- name: Add PostgreSQL repository
+  include_tasks: add_repo.yml
+
+- name: Prepare storage
+  include_tasks: storage.yml
+
+- name: Install PostgreSQL packages
+  include_tasks: install_package.yml
+
+- name: Configure service before initialization
+  include_tasks: service.yml
+
+- name: Initialize database
+  include_tasks: init_db.yml
+
+- name: Start PostgreSQL service
+  include_tasks: start_service.yml
+
+- name: Install Python dependencies
+  include_tasks: python_dependencies.yml
+
+- name: Setup database users and databases
+  include_tasks: database_setup.yml
+
+- name: Configure firewall for PostgreSQL access
+  include_tasks: firewall.yml
+
+- name: Display execution summary
+  include_tasks: summary.yml

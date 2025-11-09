@@ -1,0 +1,36 @@
+---
+# Configure default PostgreSQL superuser using direct SQL
+- name: Set password for PostgreSQL superuser (postgres)
+  shell: |
+    sudo -u postgres psql -c "ALTER USER \"{{ postgres_superuser }}\" PASSWORD '{{ postgres_superuser_password }}';"
+  changed_when: true
+  no_log: true
+
+# Create custom admin user with full privileges
+- name: Create PostgreSQL admin user (psqladmin)
+  shell: |
+    sudo -u postgres psql -c "CREATE USER \"{{ postgres_admin_user }}\" WITH PASSWORD '{{ postgres_admin_password }}' SUPERUSER CREATEDB CREATEROLE LOGIN;" || \
+    sudo -u postgres psql -c "ALTER USER \"{{ postgres_admin_user }}\" PASSWORD '{{ postgres_admin_password }}';"
+  changed_when: true
+  no_log: true
+
+# Create application-specific user
+- name: Create PostgreSQL application user
+  shell: |
+    sudo -u postgres psql -c "CREATE USER \"{{ postgres_app_user }}\" WITH PASSWORD '{{ postgres_app_password }}' CREATEDB LOGIN;" || \
+    sudo -u postgres psql -c "ALTER USER \"{{ postgres_app_user }}\" PASSWORD '{{ postgres_app_password }}';"
+  changed_when: true
+  no_log: true
+
+# Create application database
+- name: Create PostgreSQL application database
+  shell: |
+    sudo -u postgres psql -c "SELECT 1 FROM pg_database WHERE datname='{{ postgres_app_db }}';" | grep -q 1 || \
+    sudo -u postgres createdb "{{ postgres_app_db }}" -O "{{ postgres_app_user }}"
+  changed_when: true
+
+# Grant privileges to application user on their database
+- name: Grant all privileges to application user on their database
+  shell: |
+    sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE \"{{ postgres_app_db }}\" TO \"{{ postgres_app_user }}\";"
+  changed_when: true

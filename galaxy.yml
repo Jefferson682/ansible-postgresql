@@ -1,0 +1,18 @@
+---
+namespace: jefferson682
+name: postgresql
+version: 0.1.0
+readme: README.md
+authors:
+  - "José Jefferson Nascimento do Vale (github.com/jefferson682)"
+description: Ansible collection for automated PostgreSQL deployment and configuration across multiple environments.
+license:
+  - MIT
+tags:
+  - database
+  - postgresql
+  - postgres
+  - sql
+  - deployment
+  - automation
+  - devnordestino
