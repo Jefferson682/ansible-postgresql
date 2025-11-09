@@ -9,7 +9,7 @@
 # Create custom admin user with full privileges
 - name: Create PostgreSQL admin user (psqladmin)
   shell: |
-    sudo -u postgres psql -c "CREATE USER \"{{ postgres_admin_user }}\" WITH PASSWORD '{{ postgres_admin_password }}' SUPERUSER CREATEDB CREATEROLE LOGIN;" || \
+    sudo -u postgres psql -c "CREATE USER \"{{ postgres_admin_user }}\" WITH PASSWORD '{{ postgres_admin_password }}' CREATEDB CREATEROLE LOGIN;" || \
     sudo -u postgres psql -c "ALTER USER \"{{ postgres_admin_user }}\" PASSWORD '{{ postgres_admin_password }}';"
   changed_when: true
   no_log: true
