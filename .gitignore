@@ -1,0 +1,29 @@
+# Ansible Vault - Encrypted passwords (NEVER commit these!)
+**/vault.yml
+.vault_pass
+.vault_password
+
+# Vagrant
+.vagrant/
+*.box
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Ansible
+*.retry

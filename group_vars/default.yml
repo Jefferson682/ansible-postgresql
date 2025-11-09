@@ -4,10 +4,10 @@ postgres_port: 5432
 postgres_service: postgresql-{{ postgres_version }}
 
 # Administrative users (same for all environments)
-postgres_superuser: postgres                         # Default PostgreSQL superuser
-postgres_superuser_password: "your-strong-password"  # Password for postgres user
-postgres_admin_user: "db_admin"                      # Custom admin user
-postgres_admin_password: "your-admin-password"       # Password for admin user
+postgres_superuser: postgres                              # Default PostgreSQL superuser
+postgres_superuser_password: "{{ vault_postgres_superuser_password }}"  # From vault.yml
+postgres_admin_user: "db_admin"                           # Custom admin user
+postgres_admin_password: "{{ vault_postgres_admin_password }}"          # From vault.yml
 
 # Network configuration
 postgres_listen_addresses: '*'
