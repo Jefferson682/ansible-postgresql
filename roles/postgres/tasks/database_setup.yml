@@ -17,7 +17,7 @@
 # Create application-specific user
 - name: Create PostgreSQL application user
   shell: |
-    sudo -u postgres psql -c "CREATE USER \"{{ postgres_app_user }}\" WITH PASSWORD '{{ postgres_app_password }}' CREATEDB LOGIN;" || \
+    sudo -u postgres psql -c "CREATE USER \"{{ postgres_app_user }}\" WITH PASSWORD '{{ postgres_app_password }}' LOGIN;" || \
     sudo -u postgres psql -c "ALTER USER \"{{ postgres_app_user }}\" PASSWORD '{{ postgres_app_password }}';"
   changed_when: true
   no_log: true
