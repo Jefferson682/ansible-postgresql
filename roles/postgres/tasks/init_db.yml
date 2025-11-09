@@ -1,10 +1,11 @@
 ---
+# Here commands for REDHAT-based systems
 - name: Check if PostgreSQL database is already initialized
   stat:
     path: "{{ postgres_data_dir }}/PG_VERSION"
   register: pg_initialized
 
-- name: Initialize PostgreSQL database with custom data directory
+- name: Initialize PostgreSQL database with custom data directory on RedHat-based systems
   block:
     - name: Set ownership of data directory to postgres user (double-check)
       file:
@@ -36,11 +37,50 @@
       shell: "sudo -u postgres /usr/pgsql-{{ postgres_version }}/bin/initdb -D {{ postgres_data_dir }}"
       args:
         creates: "{{ postgres_data_dir }}/PG_VERSION"
+        environment:
+          PGDATA: "{{ postgres_data_dir }}"
+          LC_ALL: "C"
+      
+  when: ansible_facts['os_family'] == 'RedHat' and not pg_initialized.stat.exists
+
+# Here commands for DEBIAN-based systems
+- name: Initialize PostgreSQL database with custom data directory on Debian-based systems
+  block:
+    - name: Set ownership of data directory to postgres user (double-check)
+      file:
+        path: "{{ postgres_data_dir }}"
+        owner: postgres
+        group: postgres
+        mode: '0700'
+        state: directory
+
+    - name: Initialize database as postgres user
+      command: "sudo -u postgres /usr/lib/postgresql/{{ postgres_version }}/bin/initdb -D {{ postgres_data_dir }}"
+      args:
+        creates: "{{ postgres_data_dir }}/PG_VERSION"
+      become: yes
+      become_user: postgres
       environment:
         PGDATA: "{{ postgres_data_dir }}"
         LC_ALL: "C"
       
-  when: not pg_initialized.stat.exists
+  rescue:
+    - name: Debug information on failure
+      debug:
+        msg: |
+          Initialization failed with become_user. Trying alternative method.
+          Data directory: {{ postgres_data_dir }}
+          PostgreSQL version: {{ postgres_version }}
+    
+    - name: Alternative initialization using direct sudo
+      shell: "sudo -u postgres /usr/lib/postgresql/{{ postgres_version }}/bin/initdb -D {{ postgres_data_dir }}"
+      args:
+        creates: "{{ postgres_data_dir }}/PG_VERSION"
+        environment:
+          PGDATA: "{{ postgres_data_dir }}"
+          LC_ALL: "C"
+      
+  when: ansible_facts['os_family'] == 'Debian' and not pg_initialized.stat.exists
 
 - name: Update PostgreSQL configuration
   lineinfile:

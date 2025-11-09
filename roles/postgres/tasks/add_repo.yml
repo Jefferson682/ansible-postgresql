@@ -1,4 +1,5 @@
 ---
+# Here commands for REDHAT-based systems
 - name: Check if PostgreSQL GPG key is already imported
   ansible.builtin.command:
     cmd: rpm -qa | grep pgdg-redhat-repo
@@ -28,3 +29,17 @@
     regexp: '^gpgcheck\s*=\s*0'
     replace: 'gpgcheck=1'
   when: ansible_facts['os_family'] == 'RedHat'
+
+# Here commands for DEBIAN-based systems
+- name: Add PostgreSQL repository for Debian-based systems
+  apt_repository:
+    repo: "deb http://apt.postgresql.org/pub/repos/apt/ {{ ansible_distribution_release }}-pgdg main"
+    state: present
+    filename: "pgdg.list"
+  when: ansible_facts['os_family'] == 'Debian'
+
+- name: Ensure GPG key for PostgreSQL is added for Debian-based systems
+  ansible.builtin.command:
+    cmd: wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -
+  changed_when: false
+  when: ansible_facts['os_family'] == 'Debian'
