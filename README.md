@@ -28,10 +28,12 @@ Este projeto está licenciado sob a **MIT License** - veja o arquivo [LICENSE](L
 - [Requisitos](#-requisitos)
 - [Início Rápido](#-início-rápido)
 - [Ambientes Suportados](#️-ambientes-suportados)
-- [Configuração](#️-configuração-de-variáveis)
+- [Configuração de Variáveis](#️-configuração-de-variáveis)
+- [Gestão de Senhas (Ansible Vault)](#-gestão-de-senhas-ansible-vault)
 - [Instalação](#-instalação)
 - [Desinstalação](#️-desinstalação)
-- [Usuários e Conectividade](#-usuários-e-conectividade)
+- [Usuários do PostgreSQL](#-usuários-do-postgresql)
+- [Conectividade](#-conectividade)
 - [Estrutura do Projeto](#-estrutura-do-projeto)
 - [Contribuindo](#-contribuindo)
 - [Roadmap](#-roadmap)
@@ -113,18 +115,58 @@ ansible-playbook -i inventories/stg/inventory.ini playbooks/install_postgres.yml
 
 ## ⚙️ Configuração de Variáveis
 
-### Globais (`group_vars/default.yml`)
-- `postgres_version: 16`
-- `postgres_port: 5432`
-- Usuários administrativos
+### Variáveis Globais (`group_vars/default.yml`)
+- `postgres_version: 16` - Versão do PostgreSQL
+- `postgres_port: 5432` - Porta padrão
+- `postgres_superuser: postgres` - Superusuário padrão
+- `postgres_admin_user: db_admin` - Usuário DBA
 
-### Por Ambiente (`inventories/[ambiente]/group_vars/postgres.yml`)
-- `postgres_data_dir: /opt/psql`
-- `postgres_app_user`: Usuário da aplicação
-- `postgres_app_password`: Senha da aplicação
-- `postgres_app_db`: Nome do banco
+### Variáveis por Ambiente (`inventories/[ambiente]/group_vars/postgres.yml`)
+- `postgres_data_dir: /opt/psql` - Diretório de dados
+- `postgres_app_user` - Usuário da aplicação
+- `postgres_app_user_readonly` - Usuário read-only (opcional)
+- `postgres_app_db` - Nome do banco de dados
 
-**⚠️ IMPORTANTE**: Use Ansible Vault para senhas. Nunca commite credenciais!
+## 🔐 Gestão de Senhas (Ansible Vault)
+
+Este projeto utiliza **Ansible Vault** para proteger credenciais. As senhas **nunca** são commitadas no repositório.
+
+### Setup Inicial
+
+```bash
+# 1. Copiar templates de vault
+cp group_vars/vault.yml.example group_vars/vault.yml
+cp inventories/stg/group_vars/vault.yml.example inventories/stg/group_vars/vault.yml
+
+# 2. Editar com suas senhas reais
+vi group_vars/vault.yml
+vi inventories/stg/group_vars/vault.yml
+
+# 3. Criar senha master do vault
+echo "sua-senha-master-forte" > .vault_pass
+chmod 600 .vault_pass
+
+# 4. Criptografar os arquivos
+ansible-vault encrypt group_vars/vault.yml --vault-password-file .vault_pass
+ansible-vault encrypt inventories/stg/group_vars/vault.yml --vault-password-file .vault_pass
+```
+
+### Uso no Dia a Dia
+
+```bash
+# Executar playbook com vault
+ansible-playbook -i inventories/stg/inventory.ini playbooks/install_postgres.yml \
+  --vault-password-file .vault_pass \
+  --ask-become-pass
+
+# Ver arquivo criptografado
+ansible-vault view group_vars/vault.yml --vault-password-file .vault_pass
+
+# Editar arquivo criptografado
+ansible-vault edit group_vars/vault.yml --vault-password-file .vault_pass
+```
+
+**📖 Documentação completa**: Veja [VAULT_SETUP.md](VAULT_SETUP.md) para mais detalhes.
 
 ## 🚀 Instalação
 
@@ -140,10 +182,15 @@ ansible-playbook -i inventories/dev/inventory.ini playbooks/install_postgres.yml
 ssh-copy-id ansible_user@<IP>
 
 # 2. Teste (recomendado)
-ansible-playbook -i inventories/stg/inventory.ini playbooks/install_postgres.yml --check --ask-become-pass
+ansible-playbook -i inventories/stg/inventory.ini playbooks/install_postgres.yml \
+  --vault-password-file .vault_pass \
+  --check \
+  --ask-become-pass
 
 # 3. Execute
-ansible-playbook -i inventories/stg/inventory.ini playbooks/install_postgres.yml --ask-become-pass
+ansible-playbook -i inventories/stg/inventory.ini playbooks/install_postgres.yml \
+  --vault-password-file .vault_pass \
+  --ask-become-pass
 ```
 
 💡 Use `--check --diff` para ver mudanças antes de aplicar.
@@ -171,35 +218,60 @@ Esta ação é **irreversível** e remove:
 
 **Faça backup antes de executar em produção!**
 
-## 👥 Usuários e Conectividade
+## 👥 Usuários do PostgreSQL
 
-### Usuários Criados Automaticamente
+O playbook cria automaticamente 4 tipos de usuários com diferentes níveis de acesso:
 
-1. **postgres** - Superusuário padrão do PostgreSQL
-2. **db_admin** - Admin customizado (SUPERUSER, CREATEDB, CREATEROLE)
-3. **app_user_[ambiente]** - Usuário da aplicação (CREATEDB, LOGIN)
+### 1. `postgres` - Superusuário Padrão
+- **Tipo**: Superusuário do PostgreSQL (criado automaticamente na instalação)
+- **Uso**: **Apenas para emergências**
+- **Permissões**: Acesso total ao PostgreSQL
+- **⚠️ Importante**: Não use este usuário para operações rotineiras
 
-### Conectividade
+### 2. `db_admin` - Administrador DBA
+- **Tipo**: Administrador customizado para o DBA
+- **Uso**: Administração diária do banco de dados
+- **Permissões**: CREATEDB, CREATEROLE, SUPERUSER
+- **Responsabilidades**:
+  - Criar/remover databases
+  - Gerenciar usuários
+  - Ajustar configurações
+  - Executar manutenções
+
+### 3. `app_user_[ambiente]` - Usuário da Aplicação
+- **Tipo**: Usuário proprietário do banco de dados
+- **Uso**: Conexão da aplicação ao banco
+- **Permissões**: Acesso total **apenas ao banco da aplicação**
+- **Pode**: Criar/modificar/deletar tabelas, inserir/atualizar dados
+- **Não pode**: Criar outros databases, gerenciar usuários
+
+### 4. `app_user_[ambiente]_ro` - Usuário Read-Only (Opcional)
+- **Tipo**: Usuário de leitura
+- **Uso**: Relatórios, BI, analytics, consultas
+- **Permissões**: SELECT em todas as tabelas do banco da aplicação
+- **Não pode**: Inserir, atualizar ou deletar dados
+- **Automático**: Tem acesso a tabelas futuras criadas pelo `app_user` ou `db_admin`
+
+## 🔗 Conectividade
+
+## 🔗 Conectividade
+
+### Exemplos de Conexão
 
 ```bash
-# Admin
+# DBA Admin
 psql -h <IP> -p 5432 -U db_admin -d postgres
 
-# Aplicação
-psql -h <IP> -p 5432 -U app_user_stg -d myapp_staging
+# Aplicação (staging)
+psql -h 192.168.1.10 -p 5432 -U app_user_stg -d myapp_staging
 
-# Teste de porta
+# Read-only (para relatórios)
+psql -h 192.168.1.10 -p 5432 -U app_user_stg_ro -d myapp_staging
+
+# Teste de conectividade
 nc -zv <IP> 5432
+telnet <IP> 5432
 ```
-
-### Responsabilidades do DBA
-
-Após a instalação:
-- Criar usuários adicionais
-- Configurar usuários read-only
-- Ajustar políticas de segurança
-- Configurar backups
-- Monitorar performance
 
 ## 💾 Armazenamento
 
@@ -274,11 +346,13 @@ Contribuições são bem-vindas!
 ### ✅ Implementado
 - [x] PostgreSQL 16.x
 - [x] Oracle Linux / RHEL 9.x
-- [x] Criação de banco e usuários
+- [x] Criação automática de banco e usuários
+- [x] Usuário read-only com acesso a tabelas futuras
 - [x] Firewall automático
-- [x] Modo check
-- [x] Múltiplos ambientes
-- [x] Vagrant DEV
+- [x] Ansible Vault para senhas
+- [x] Modo check (dry-run)
+- [x] Múltiplos ambientes (DEV, STG, PROD)
+- [x] Vagrant para desenvolvimento
 - [x] Playbook de desinstalação
 
 ### 🚧 Planejado
@@ -296,18 +370,20 @@ Contribuições são bem-vindas!
 ## 🔐 Segurança
 
 ### Implementado
-- ✅ Senhas não no código
-- ✅ Firewall automático
-- ✅ Princípio de menor privilégio
-- ✅ Autenticação md5
+- ✅ Ansible Vault para credenciais
+- ✅ Firewall configurado automaticamente
+- ✅ Princípio de menor privilégio por usuário
+- ✅ Autenticação md5 para conexões remotas
+- ✅ Usuário read-only para consultas
 
 ### Recomendações
-- 🔑 Use Ansible Vault
-- 🔐 Configure SSL/TLS em produção
-- 🛡️ Limite acesso via firewall
-- 📝 Audite logs regularmente
-- 🔄 Rotacione senhas
-- 💾 Backups regulares
+- 🔑 **Senhas fortes**: Use geradores de senha
+- 🔐 **SSL/TLS**: Configure em produção
+- 🛡️ **Firewall**: Limite IPs permitidos
+- 📝 **Auditoria**: Monitore logs do PostgreSQL
+- 🔄 **Rotação**: Altere senhas periodicamente
+- 💾 **Backup**: Configure backups regulares
+- 🚫 **postgres user**: Nunca use em operações rotineiras
 
 ## 📞 Suporte
 
