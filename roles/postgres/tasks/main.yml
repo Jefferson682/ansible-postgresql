@@ -1,4 +1,18 @@
 ---
+# Main task file for PostgreSQL role
+
+- name: Check the operating system
+  debug:
+    msg: "Detected OS family: {{ ansible_facts['os_family'] }}"
+
+- name: Include tasks for RedHat-based systems
+  include_tasks: install_redhat.yml
+  when: ansible_facts['os_family'] == 'RedHat'
+
+- name: Include tasks for Debian-based systems
+  include_tasks: install_debian.yml
+  when: ansible_facts['os_family'] == 'Debian'
+
 - name: Check existing PostgreSQL installation
   include_tasks: check_existing.yml
 
