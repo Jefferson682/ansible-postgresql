@@ -1,0 +1,17 @@
+---
+# Ansible Vault - Encrypted Secrets Template for DEV environment
+# 
+# INSTRUCTIONS:
+# 1. Copy this file to vault.yml:
+#    cp vault.yml.example vault.yml
+#
+# 2. Edit vault.yml with your real passwords
+#
+# 3. Encrypt the file:
+#    ansible-vault encrypt vault.yml
+#
+# 4. NEVER commit vault.yml to git (it's in .gitignore)
+
+# DEV environment passwords
+vault_postgres_app_password: "CHANGE-ME-dev-app-password"
+vault_postgres_app_password_readonly: "CHANGE-ME-dev-readonly-password"
