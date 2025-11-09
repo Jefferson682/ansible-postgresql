@@ -1,7 +1,7 @@
 ---
 namespace: jefferson682
 name: postgresql
-version: 0.2.0
+version: 0.4.0
 readme: README.md
 authors:
   - "José Jefferson Nascimento do Vale (github.com/jefferson682)"
