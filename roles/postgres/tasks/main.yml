@@ -1,9 +1,6 @@
 ---
 # Main task file for PostgreSQL role
 
-- name: Include tasks for installing Python dependencies
-  include_tasks: install_python_dependencies.yml
-
 - name: Check the operating system
   debug:
     msg: "Detected OS family: {{ ansible_facts['os_family'] }}"
