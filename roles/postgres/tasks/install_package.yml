@@ -1,5 +1,15 @@
 ---
-- name: Ensure PostgreSQL packages are installed
-  yum:
-    name: "{{ postgres_packages }}"
+# Para Debian/Ubuntu
+- name: Ensure PostgreSQL packages are installed (Debian)
+  apt:
+    name: "{{ postgres_packages_debian }}"
     state: present
+    update_cache: yes
+  when: ansible_facts['os_family'] == 'Debian'
+
+# Para RedHat
+- name: Ensure PostgreSQL packages are installed (RedHat)
+  yum:
+    name: "{{ postgres_packages_redhat }}"
+    state: present
+  when: ansible_facts['os_family'] == 'RedHat'
