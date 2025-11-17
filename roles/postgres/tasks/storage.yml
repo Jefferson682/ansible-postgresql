@@ -2,12 +2,8 @@
 - name: Ensure postgres user exists
   user:
     name: postgres
-    system: yes
-    shell: /bin/bash
-    home: /var/lib/pgsql
-    create_home: yes
     state: present
-    comment: "PostgreSQL Server"
+    system: yes
 
 - name: Ensure postgres user has sudo access for PostgreSQL operations
   lineinfile:

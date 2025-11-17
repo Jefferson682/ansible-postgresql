@@ -1,4 +1,8 @@
----
+- name: Restart PostgreSQL (Debian)
+  become: yes
+  service:
+    name: postgresql
+    state: restarted
 - name: restart postgresql
   service:
     name: "{{ postgres_service }}"

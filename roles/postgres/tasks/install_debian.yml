@@ -1,0 +1,18 @@
+---
+# Tasks for installing PostgreSQL on Debian-based systems
+
+- name: Install PostgreSQL package on Debian-based systems
+  apt:
+    name:
+      - postgresql
+      - postgresql-contrib
+    state: present
+    update_cache: yes
+  when: ansible_facts['os_family'] == 'Debian'
+
+- name: Ensure PostgreSQL service is enabled and started on Debian-based systems
+  service:
+    name: postgresql
+    state: started
+    enabled: yes
+  when: ansible_facts['os_family'] == 'Debian'

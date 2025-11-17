@@ -5,6 +5,20 @@
   vars_files:
     - ../group_vars/default.yml
   tasks:
+    - name: Check if postgres user has running processes
+      shell: pgrep -u postgres || true
+      register: postgres_pids
+      changed_when: false
+      failed_when: false
+
+    - name: Kill all processes for postgres user
+      shell: pkill -u postgres
+      when:
+        - not ansible_check_mode
+        - ansible_facts['os_family'] in ['Debian', 'RedHat']
+        - postgres_pids.stdout != ''
+      ignore_errors: yes
+      tags: kill_postgres
     # Quick detection - find running PostgreSQL version
     - name: Find running PostgreSQL service
       shell: "systemctl list-units --type=service --state=active | grep postgresql | head -1 | grep -o 'postgresql-[0-9]*' | grep -o '[0-9]*'"
@@ -25,27 +39,63 @@
           {% if ansible_check_mode %}This is a DRY RUN - nothing will be actually removed!{% endif %}
 
     # Simple removal process
-    - name: Stop PostgreSQL service
+    - name: Stop PostgreSQL service (Debian)
+      service:
+        name: "postgresql@{{ postgres_version_to_remove }}-main"
+        state: stopped
+        enabled: false
+      ignore_errors: yes
+      when: ansible_facts['os_family'] == 'Debian'
+
+    - name: Stop PostgreSQL service (RedHat)
       service:
         name: "postgresql-{{ postgres_version_to_remove }}"
         state: stopped
         enabled: false
       ignore_errors: yes
+      when: ansible_facts['os_family'] == 'RedHat'
 
-    - name: Remove systemd override
+    - name: Remove systemd override (Debian)
+      file:
+        path: "/etc/systemd/system/postgresql@{{ postgres_version_to_remove }}-main.service.d"
+        state: absent
+      when: ansible_facts['os_family'] == 'Debian'
+
+    - name: Remove systemd override (RedHat)
       file:
         path: "/etc/systemd/system/postgresql-{{ postgres_version_to_remove }}.service.d"
         state: absent
+      when: ansible_facts['os_family'] == 'RedHat'
 
-    - name: Remove PostgreSQL packages
+    - name: Remove PostgreSQL packages (Debian)
+      apt:
+        name:
+          - "postgresql-{{ postgres_version_to_remove }}"
+          - "postgresql-client-{{ postgres_version_to_remove }}"
+          - "postgresql-contrib"
+        state: absent
+        purge: yes
+        autoremove: yes
+        update_cache: yes
+      when: ansible_facts['os_family'] == 'Debian'
+
+    - name: Remove PostgreSQL packages (RedHat)
       yum:
         name: "postgresql{{ postgres_version_to_remove }}*"
         state: absent
+      when: ansible_facts['os_family'] == 'RedHat'
 
-    - name: Remove PostgreSQL repository
+    - name: Remove PostgreSQL repository (Debian)
+      apt_repository:
+        repo: "deb http://apt.postgresql.org/pub/repos/apt {{ ansible_distribution_release | default('noble') }}-pgdg main"
+        state: absent
+      when: ansible_facts['os_family'] == 'Debian'
+
+    - name: Remove PostgreSQL repository (RedHat)
       yum:
         name: "pgdg-redhat-repo*"
         state: absent
+      when: ansible_facts['os_family'] == 'RedHat'
 
     - name: Remove data directories
       file:
@@ -54,15 +104,18 @@
       loop:
         - "{{ postgres_data_dir | default('/opt/psql') }}"
         - "/var/lib/pgsql"
+        - "/var/lib/postgresql"
 
-    - name: Remove firewall rule
+    - name: Remove firewall rule (RedHat)
       ansible.posix.firewalld:
         port: "{{ postgres_port | default(5432) }}/tcp"
         permanent: yes
         state: disabled
         immediate: yes
       ignore_errors: yes
-      when: not ansible_check_mode
+      when:
+        - not ansible_check_mode
+        - ansible_facts['os_family'] == 'RedHat'
 
     - name: Remove postgres user
       user:
@@ -70,7 +123,9 @@
         state: absent
         remove: yes
       ignore_errors: yes
-      when: not ansible_check_mode
+      when:
+        - not ansible_check_mode
+        - ansible_facts['os_family'] in ['Debian', 'RedHat']
 
     - name: Reload systemd
       systemd:

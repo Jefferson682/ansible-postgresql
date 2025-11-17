@@ -1,4 +1,15 @@
----
+## Set the correct service name for each OS
+- name: Set PostgreSQL service name (Debian)
+  set_fact:
+    postgres_service: "postgresql"
+  when: ansible_facts['os_family'] == 'Debian'
+
+- name: Set PostgreSQL service name (RedHat)
+  set_fact:
+    postgres_service: "postgresql-{{ postgres_version }}"
+  when: ansible_facts['os_family'] == 'RedHat'
+
+
 - name: Start PostgreSQL service
   service:
     name: "{{ postgres_service }}"

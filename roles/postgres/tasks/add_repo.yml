@@ -1,5 +1,46 @@
----
-- name: Check if PostgreSQL GPG key is already imported
+  lineinfile:
+    path: /etc/apt/sources.list
+    regexp: 'postgresql|pgdg'
+    state: absent
+  when: ansible_facts['os_family'] == 'Debian'
+  become: yes
+  ignore_errors: yes
+  file:
+    path: "{{ item }}"
+    state: absent
+  with_fileglob:
+    - /etc/apt/sources.list.d/*pgdg*
+    - /etc/apt/sources.list.d/*postgres*
+  when: ansible_facts['os_family'] == 'Debian'
+  become: yes
+  ignore_errors: yes
+  file:
+    path: /usr/share/postgresql-common/pgdg
+    state: directory
+    mode: '0755'
+  when: ansible_facts['os_family'] == 'Debian'
+  become: yes
+
+  ansible.builtin.get_url:
+    url: https://www.postgresql.org/media/keys/ACCC4CF8.asc
+    dest: /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc
+    mode: '0644'
+    force: yes
+  when: ansible_facts['os_family'] == 'Debian'
+  become: yes
+
+  copy:
+    dest: /etc/apt/sources.list.d/pgdg.list
+    content: "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt noble-pgdg main\n"
+    mode: '0644'
+  when: ansible_facts['os_family'] == 'Debian'
+  become: yes
+
+  apt:
+    update_cache: yes
+  when: ansible_facts['os_family'] == 'Debian'
+# Fim do bloco Debian/Ubuntu
+# Here commands for REDHAT-based systems
   ansible.builtin.command:
     cmd: rpm -qa | grep pgdg-redhat-repo
   register: pgdg_key_check
@@ -7,7 +48,6 @@
   failed_when: false
   check_mode: false
 
-- name: Ensure PostgreSQL GPG key is imported manually
   ansible.builtin.command:
     cmd: rpm --import https://apt.postgresql.org/pub/repos/yum/keys/RPM-GPG-KEY-PGDG
   changed_when: false
@@ -16,15 +56,15 @@
     - not ansible_check_mode
     - pgdg_key_check.rc != 0
 
-- name: Add PostgreSQL repository package (disable GPG check just for install)
   ansible.builtin.yum:
     name: "https://download.postgresql.org/pub/repos/yum/reporpms/EL-9-x86_64/pgdg-redhat-repo-latest.noarch.rpm"
     state: present
     disable_gpg_check: true
 
-- name: Ensure PostgreSQL repo GPG check is enabled (after import)
   ansible.builtin.replace:
     path: /etc/yum.repos.d/pgdg-redhat-all.repo
     regexp: '^gpgcheck\s*=\s*0'
     replace: 'gpgcheck=1'
   when: ansible_facts['os_family'] == 'RedHat'
+# Este arquivo foi substituído por add_repo_debian.yml e add_repo_redhat.yml
+

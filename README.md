@@ -54,7 +54,48 @@ Este projeto está licenciado sob a **MIT License** - veja o arquivo [LICENSE](L
 
 ## 🚀 Início Rápido
 
-### Desenvolvimento Local (Vagrant)
+### 1. Configuração e Criptografia de Senhas (Ansible Vault)
+
+Este projeto utiliza **Ansible Vault** para proteger credenciais. As senhas **nunca** são commitadas no repositório.
+
+#### Setup Inicial
+
+```bash
+# 1. Copiar templates de vault
+cp group_vars/vault.yml.example group_vars/vault.yml
+cp inventories/stg/group_vars/vault.yml.example inventories/stg/group_vars/vault.yml
+
+# 2. Editar com suas senhas reais
+vi group_vars/vault.yml
+vi inventories/stg/group_vars/vault.yml
+
+# 3. Criar senha master do vault
+echo "sua-senha-master-forte" > .vault_pass
+chmod 600 .vault_pass
+
+# 4. Criptografar os arquivos
+ansible-vault encrypt group_vars/vault.yml --vault-password-file .vault_pass
+ansible-vault encrypt inventories/stg/group_vars/vault.yml --vault-password-file .vault_pass
+```
+
+#### Uso no Dia a Dia
+
+```bash
+# Executar playbook com vault
+ansible-playbook -i inventories/stg/inventory.ini playbooks/install_postgres.yml \
+  --vault-password-file .vault_pass \
+  --ask-become-pass
+
+# Ver arquivo criptografado
+ansible-vault view group_vars/vault.yml --vault-password-file .vault_pass
+
+# Editar arquivo criptografado
+ansible-vault edit group_vars/vault.yml --vault-password-file .vault_pass
+```
+
+### 2. Executar o Projeto
+
+#### Desenvolvimento Local (Vagrant)
 
 ```bash
 # Clone o repositório
@@ -63,20 +104,26 @@ cd ansible-postgresql
 
 # Inicie o ambiente
 vagrant up
-ansible-playbook -i inventories/dev/inventory.ini playbooks/install_postgres.yml
+ansible-playbook -i inventories/dev/inventory.ini playbooks/install_postgres.yml \
+  --vault-password-file .vault_pass
 ```
 
-### Servidor Remoto
+#### Staging/Produção
 
 ```bash
 # 1. Configure o SSH
-ssh-copy-id ansible_user@<IP_DO_SERVIDOR>
+ssh-copy-id ansible_user@<IP>
 
-# 2. Teste (dry-run)
-ansible-playbook -i inventories/stg/inventory.ini playbooks/install_postgres.yml --check --ask-become-pass
+# 2. Teste (recomendado)
+ansible-playbook -i inventories/stg/inventory.ini playbooks/install_postgres.yml \
+  --vault-password-file .vault_pass \
+  --check \
+  --ask-become-pass
 
 # 3. Execute
-ansible-playbook -i inventories/stg/inventory.ini playbooks/install_postgres.yml --ask-become-pass
+ansible-playbook -i inventories/stg/inventory.ini playbooks/install_postgres.yml \
+  --vault-password-file .vault_pass \
+  --ask-become-pass
 ```
 
 ## 🖥️ Ambientes Suportados

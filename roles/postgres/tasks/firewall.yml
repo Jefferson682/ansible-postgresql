@@ -1,4 +1,5 @@
 ---
+# Here commands for REDHAT-based systems
 - name: Check if firewalld is installed and running
   ansible.builtin.systemd:
     name: firewalld
@@ -7,7 +8,7 @@
   check_mode: false
   tags: firewall
 
-- name: Configure firewall for PostgreSQL
+- name: Configure firewall for PostgreSQL on RedHat-based systems
   block:
     - name: Allow PostgreSQL port through firewall
       ansible.posix.firewalld:
@@ -40,3 +41,24 @@
   when: 
     - firewalld_status.status is not defined or firewalld_status.status.ActiveState != "active"
   tags: firewall
+
+# Here commands for DEBIAN-based systems
+- name: Allow PostgreSQL port through UFW on Debian-based systems
+  ansible.builtin.ufw:
+    rule: allow
+    port: "{{ postgres_port }}"
+    proto: tcp
+  when: ansible_facts['os_family'] == 'Debian'
+
+- name: Verify PostgreSQL port is accessible on Debian-based systems
+  ansible.builtin.wait_for:
+    port: "{{ postgres_port }}"
+    host: "0.0.0.0"
+    timeout: 10
+    msg: "PostgreSQL port {{ postgres_port }} is not accessible"
+  when: ansible_facts['os_family'] == 'Debian' and not ansible_check_mode
+
+- name: Display firewall status for Debian-based systems
+  ansible.builtin.debug:
+    msg: "PostgreSQL port {{ postgres_port }} has been opened in UFW"
+  when: ansible_facts['os_family'] == 'Debian'
