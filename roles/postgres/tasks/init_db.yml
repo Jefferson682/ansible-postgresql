@@ -43,6 +43,56 @@
       
   when: ansible_facts['os_family'] == 'RedHat' and not pg_initialized.stat.exists
 
+  block:
+    - name: Set ownership of data directory to postgres user (double-check)
+      file:
+        path: "{{ postgres_data_dir }}"
+        owner: postgres
+        group: postgres
+        mode: '0700'
+        state: directory
+
+    - name: Initialize database as postgres user (Debian workaround)
+      shell: "sudo -u postgres /usr/lib/postgresql/{{ postgres_version }}/bin/initdb -D {{ postgres_data_dir }}"
+      args:
+        creates: "{{ postgres_data_dir }}/PG_VERSION"
+      become: yes
+      become_user: root
+      
+  rescue:
+    - name: Debug information on failure
+      debug:
+        msg: |
+          Initialization failed with become_user. Please check permissions and directory state.
+          Data directory: {{ postgres_data_dir }}
+          PostgreSQL version: {{ postgres_version }}
+  when: ansible_facts['os_family'] == 'Debian' and not pg_initialized.stat.exists
+
+# Pre-task: Remove and recreate data dir if it exists, is not empty, and is not a valid PostgreSQL data directory (Debian)
+- name: Remove data directory if it exists and is not a valid PostgreSQL data directory (Debian)
+  file:
+    path: "{{ postgres_data_dir }}"
+    state: absent
+  when:
+    - ansible_facts['os_family'] == 'Debian'
+    - not pg_initialized.stat.exists
+    - postgres_data_dir is defined
+    - lookup('ansible.builtin.fileglob', postgres_data_dir + '/*', errors='ignore') | length > 0
+    - not lookup('ansible.builtin.fileglob', postgres_data_dir + '/PG_VERSION', errors='ignore')
+
+- name: Recreate data directory after removal (Debian)
+  file:
+    path: "{{ postgres_data_dir }}"
+    state: directory
+    owner: postgres
+    group: postgres
+    mode: '0700'
+  when:
+    - ansible_facts['os_family'] == 'Debian'
+    - not pg_initialized.stat.exists
+    - postgres_data_dir is defined
+    - lookup('ansible.builtin.fileglob', postgres_data_dir + '/*', errors='ignore') | length == 0
+
 # Here commands for DEBIAN-based systems
 - name: Initialize PostgreSQL database with custom data directory on Debian-based systems
   block:
@@ -54,32 +104,20 @@
         mode: '0700'
         state: directory
 
-    - name: Initialize database as postgres user
-      command: "sudo -u postgres /usr/lib/postgresql/{{ postgres_version }}/bin/initdb -D {{ postgres_data_dir }}"
+    - name: Initialize database as postgres user (Debian workaround)
+      shell: "sudo -u postgres /usr/lib/postgresql/{{ postgres_version }}/bin/initdb -D {{ postgres_data_dir }}"
       args:
         creates: "{{ postgres_data_dir }}/PG_VERSION"
       become: yes
-      become_user: postgres
-      environment:
-        PGDATA: "{{ postgres_data_dir }}"
-        LC_ALL: "C"
+      become_user: root
       
   rescue:
     - name: Debug information on failure
       debug:
         msg: |
-          Initialization failed with become_user. Trying alternative method.
+          Initialization failed with become_user. Please check permissions and directory state.
           Data directory: {{ postgres_data_dir }}
           PostgreSQL version: {{ postgres_version }}
-    
-    - name: Alternative initialization using direct sudo
-      shell: "sudo -u postgres /usr/lib/postgresql/{{ postgres_version }}/bin/initdb -D {{ postgres_data_dir }}"
-      args:
-        creates: "{{ postgres_data_dir }}/PG_VERSION"
-        environment:
-          PGDATA: "{{ postgres_data_dir }}"
-          LC_ALL: "C"
-      
   when: ansible_facts['os_family'] == 'Debian' and not pg_initialized.stat.exists
 
 - name: Update PostgreSQL configuration
