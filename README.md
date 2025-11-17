@@ -61,21 +61,21 @@ Este projeto utiliza **Ansible Vault** para proteger credenciais. As senhas **nu
 #### Setup Inicial
 
 ```bash
+
 # 1. Copiar templates de vault
-cp group_vars/vault.yml.example group_vars/vault.yml
-cp inventories/stg/group_vars/vault.yml.example inventories/stg/group_vars/vault.yml
+cp inventories/stg/group_vars/postgres/vault.yml.example inventories/stg/group_vars/postgres/vault.yml
+
 
 # 2. Editar com suas senhas reais
-vi group_vars/vault.yml
-vi inventories/stg/group_vars/vault.yml
+vi inventories/stg/group_vars/postgres/vault.yml
 
 # 3. Criar senha master do vault
 echo "sua-senha-master-forte" > .vault_pass
 chmod 600 .vault_pass
 
-# 4. Criptografar os arquivos
-ansible-vault encrypt group_vars/vault.yml --vault-password-file .vault_pass
-ansible-vault encrypt inventories/stg/group_vars/vault.yml --vault-password-file .vault_pass
+
+# 4. Criptografar o arquivo
+ansible-vault encrypt inventories/stg/group_vars/postgres/vault.yml --vault-password-file .vault_pass
 ```
 
 #### Uso no Dia a Dia
@@ -86,11 +86,12 @@ ansible-playbook -i inventories/stg/inventory.ini playbooks/install_postgres.yml
   --vault-password-file .vault_pass \
   --ask-become-pass
 
+
 # Ver arquivo criptografado
-ansible-vault view group_vars/vault.yml --vault-password-file .vault_pass
+ansible-vault view inventories/stg/group_vars/postgres/vault.yml --vault-password-file .vault_pass
 
 # Editar arquivo criptografado
-ansible-vault edit group_vars/vault.yml --vault-password-file .vault_pass
+ansible-vault edit inventories/stg/group_vars/postgres/vault.yml --vault-password-file .vault_pass
 ```
 
 ### 2. Executar o Projeto
@@ -133,6 +134,7 @@ ansible-playbook -i inventories/stg/inventory.ini playbooks/install_postgres.yml
 - ✅ Red Hat Enterprise Linux 9.x
 - ✅ AlmaLinux 9.x
 - ✅ Rocky Linux 9.x
+- ✅ Ubuntu 24.04 LTS
 
 ### Versão PostgreSQL
 - ✅ PostgreSQL 16.x (recomendada e testada)
@@ -153,13 +155,21 @@ ansible-playbook -i inventories/stg/inventory.ini playbooks/install_postgres.yml
 
 ## ⚙️ Configuração de Variáveis
 
-### Variáveis Globais (`group_vars/default.yml`)
+### Estrutura de Variáveis e Vault
+
+O projeto segue o padrão de organização de variáveis e arquivos vault conforme a estrutura de `stg` (que deve ser replicada para `dev` e `prod`):
+
+- **Variáveis e secrets por ambiente:**
+  - Local: `inventories/[ambiente]/group_vars/postgres/main.yml` (variáveis)
+  - Local: `inventories/[ambiente]/group_vars/postgres/vault.yml` (secrets criptografados)
+  - Exemplo: `inventories/[ambiente]/group_vars/postgres/vault.yml.example`
+  - Use sempre este padrão para DEV, STG e PROD.
+
+Principais variáveis:
 - `postgres_version: 16` - Versão do PostgreSQL
 - `postgres_port: 5432` - Porta padrão
 - `postgres_superuser: postgres` - Superusuário padrão
 - `postgres_admin_user: db_admin` - Usuário DBA
-
-### Variáveis por Ambiente (`inventories/[ambiente]/group_vars/postgres.yml`)
 - `postgres_data_dir: /opt/psql` - Diretório de dados
 - `postgres_app_user` - Usuário da aplicação
 - `postgres_app_user_readonly` - Usuário read-only (opcional)
@@ -350,16 +360,17 @@ ansible-postgresql/
 │   ├── install_postgres.yml
 │   └── uninstall_postgres.yml
 ├── group_vars/
-│   ├── default.yml
-│   ├── vault.yml                  # Arquivo criptografado com Ansible Vault
-│   └── vault.yml.example          # Exemplo de configuração para o Vault
+│   └── postgres/                  # (opcional, para variáveis globais)
+│       ├── main.yml
+│       ├── vault.yml.example
 ├── inventories/
 │   ├── dev/
 │   ├── stg/
 │   │   └── group_vars/
-│   │       ├── postgres.yml
-│   │       ├── vault.yml          # Arquivo criptografado com Ansible Vault
-│   │       └── vault.yml.example  # Exemplo de configuração para o Vault
+│   │       └── postgres/
+│   │           ├── main.yml           # Variáveis específicas do ambiente
+│   │           ├── vault.yml          # Arquivo criptografado com Ansible Vault
+│   │           └── vault.yml.example  # Exemplo de configuração para o Vault
 │   └── prd/
 └── roles/
     └── postgres/
@@ -453,7 +464,6 @@ git commit --no-verify -m "mensagem fora do padrão"
 - [ ] Backup automático
 - [ ] Monitoramento (Prometheus)
 - [ ] SSL/TLS
-- [ ] Ubuntu/Debian
 - [ ] Performance tuning
 - [ ] Extensões (PostGIS, TimescaleDB)
 
@@ -465,6 +475,7 @@ git commit --no-verify -m "mensagem fora do padrão"
 - ✅ Princípio de menor privilégio por usuário
 - ✅ Autenticação md5 para conexões remotas
 - ✅ Usuário read-only para consultas
+- ✅ Suporte a Ubuntu 24.04 LTS
 
 ### Recomendações
 - 🔑 **Senhas fortes**: Use geradores de senha
