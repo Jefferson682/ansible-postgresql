@@ -17,7 +17,16 @@
   systemd:
     daemon_reload: yes
 
-- name: Enable PostgreSQL service (don't start yet)
+# Para Debian/Ubuntu
+- name: Enable PostgreSQL service (Debian)
+  service:
+    name: postgresql
+    enabled: true
+  when: ansible_facts['os_family'] == 'Debian'
+
+# Para RedHat
+- name: Enable PostgreSQL service (RedHat)
   service:
     name: "{{ postgres_service }}"
     enabled: true
+  when: ansible_facts['os_family'] == 'RedHat'
