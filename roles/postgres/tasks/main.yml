@@ -19,8 +19,14 @@
 - name: Configure system hostname
   include_tasks: hostname.yml
 
-- name: Add PostgreSQL repository
-  include_tasks: add_repo.yml
+
+- name: Add PostgreSQL repository (Debian)
+  include_tasks: add_repo_debian.yml
+  when: ansible_facts['os_family'] == 'Debian'
+
+- name: Add PostgreSQL repository (RedHat)
+  include_tasks: add_repo_redhat.yml
+  when: ansible_facts['os_family'] == 'RedHat'
 
 - name: Prepare storage
   include_tasks: storage.yml
@@ -37,8 +43,13 @@
 - name: Start PostgreSQL service
   include_tasks: start_service.yml
 
-- name: Setup database users and databases
+- name: Setup database users and databases (Debian)
+  include_tasks: database_setup_debian.yml
+  when: ansible_facts['os_family'] == 'Debian'
+
+- name: Setup database users and databases (RedHat)
   include_tasks: database_setup.yml
+  when: ansible_facts['os_family'] == 'RedHat'
 
 - name: Configure firewall for PostgreSQL access
   include_tasks: firewall.yml
