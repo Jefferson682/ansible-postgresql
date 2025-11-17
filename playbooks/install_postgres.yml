@@ -3,6 +3,7 @@
   hosts: postgres
   become: true
   vars_files:
-    - ../group_vars/default.yml
+    - ../group_vars/postgres/main.yml
+    - ../group_vars/postgres/vault.yml
   roles:
     - postgres
