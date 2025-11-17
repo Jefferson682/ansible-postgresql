@@ -1,11 +1,5 @@
 ---
 # Tasks for installing PostgreSQL on Debian-based systems
-- name: Add PostgreSQL repository for Debian-based systems
-  apt_repository:
-    repo: "deb http://apt.postgresql.org/pub/repos/apt/ {{ ansible_distribution_release }}-pgdg main"
-    state: present
-    filename: "pgdg.list"
-  when: ansible_facts['os_family'] == 'Debian'
 
 - name: Install PostgreSQL package on Debian-based systems
   apt:
